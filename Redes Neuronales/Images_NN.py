@@ -116,8 +116,10 @@ def test(dataloader,model,loss_fn):
             test_loss += loss_fn(pred,y).item()
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
     test_loss /= num_batches
-    correct /= size
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+    accuracy = correct / size
+    print(f"Test Error: \n Accuracy: {(100*accuracy):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+    return test_loss, accuracy
+    
 
 def validate(dataloader, model, loss_fn):
     size = len(dataloader.dataset)
@@ -139,7 +141,10 @@ def validate(dataloader, model, loss_fn):
 
 #Backprop: con un número de épocas dado
 
-epochs = 5
+test_accuracies = []
+test_losses = []
+
+epochs = 10
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
     train(train_loader, model, loss_fn, optimizer)
@@ -158,12 +163,33 @@ for t in range(epochs):
             break
     #Solo se hace al final el test con los datos completamente nuevos
     model.load_state_dict(torch.load('best_model.pth'))
-    test(test_loader, model, loss_fn)
-
-
+    test_loss, test_acc = test(test_loader, model, loss_fn)
+    test_accuracies.append(test_acc)
+    test_losses.append(test_loss)
 
 #Grabación del modelo final:
-
 torch.save(model.state_dict(),"catdogs.pth")
 print("Saved PyTorch Model State to catdogs.pth")
+
+
+# Graficar accuracy y loss juntos
+fig, ax1 = plt.subplots()
+
+color = 'tab:blue'
+ax1.set_xlabel('Épocas')
+ax1.set_ylabel('Precisión (%)', color=color)
+ax1.plot(range(1, epochs+1), test_accuracies, marker='o', color=color)
+ax1.tick_params(axis='y', labelcolor=color)
+
+ax2 = ax1.twinx()  # segundo eje y
+color = 'tab:red'
+ax2.set_ylabel('Pérdida (Loss)', color=color)
+ax2.plot(range(1, epochs+1), test_losses, marker='x', linestyle='--', color=color)
+ax2.tick_params(axis='y', labelcolor=color)
+
+plt.title('Precisión y Pérdida en Test por Época')
+fig.tight_layout()
+plt.grid(True)
+plt.show()
+
 
